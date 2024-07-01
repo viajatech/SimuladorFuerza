@@ -1,0 +1,148 @@
+#Esta version de GUI logra gestionar mejor los hilos, los hilos se detienen y se limpian correctamente al finalizar el script con la tecla esc. 
+#Por David Ruiz
+#Puedes usar mi script siempre y cuando me des créditos en mis redes sociales @viajatech
+#Simulador de ataques a .zip con combinaciones de fuerza bruta y también con diccionario.
+
+
+import itertools
+import string
+import time
+import tkinter as tk
+from tkinter import messagebox, filedialog
+from threading import Thread, Event
+from zipfile import ZipFile, BadZipFile
+
+# Inicializar la variable diccionario
+diccionario = []
+detener_evento = Event()
+
+# Función para cargar el diccionario de contraseñas
+def cargar_diccionario():
+    file_path = filedialog.askopenfilename(title="Seleccionar archivo de diccionario", filetypes=[("Text files", "*.txt")])
+    if file_path:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            diccionario = file.read().splitlines()
+        return diccionario
+    return []
+
+# Generador de combinaciones de contraseñas
+def generar_contraseñas(longitud):
+    caracteres = string.ascii_letters + string.digits + string.punctuation
+    for contrasena in itertools.product(caracteres, repeat=longitud):
+        yield ''.join(contrasena)
+
+# Función para intentar descifrar archivo ZIP
+def descifrar_zip(file_path, contrasena):
+    try:
+        with ZipFile(file_path) as zf:
+            zf.extractall(pwd=contrasena.encode('utf-8'))
+        return True
+    except (RuntimeError, BadZipFile):
+        return False
+
+# Función para iniciar el ataque de fuerza bruta
+def iniciar_ataque_zip(file_path, diccionario):
+    inicio = time.time()
+    ultimo_reporte = inicio
+
+    encontrada = False
+    longitud_maxima = 8  # Puedes ajustar la longitud máxima según sea necesario
+    contador = 0
+
+    # Informar al usuario que el programa ha comenzado
+    messagebox.showinfo("Progreso", "El ataque de fuerza bruta para el archivo ZIP ha comenzado.")
+
+    # Intentar con el diccionario primero
+    for contrasena_intento in diccionario:
+        if detener_evento.is_set():
+            messagebox.showinfo("Detenido", "El ataque de fuerza bruta se ha detenido.")
+            return
+
+        contador += 1
+        if descifrar_zip(file_path, contrasena_intento):
+            encontrada = True
+            messagebox.showinfo("Resultado", f"Contraseña encontrada: {contrasena_intento}")
+            break
+        if time.time() - ultimo_reporte >= 60:  # Mostrar progreso cada 1 minuto (60 segundos)
+            progreso = f"Intentos: {contador}, Tiempo transcurrido: {time.time() - inicio:.2f} segundos"
+            print(progreso)
+            messagebox.showinfo("Progreso", progreso)
+            ultimo_reporte = time.time()
+    if encontrada:
+        fin = time.time()
+        resultado_final = f"Tiempo total: {fin - inicio:.2f} segundos\nTotal de combinaciones probadas: {contador}"
+        print(resultado_final)
+        messagebox.showinfo("Resultado Final", resultado_final)
+        return
+
+    # Si no se encuentra en el diccionario, usar fuerza bruta
+    for longitud in range(1, longitud_maxima + 1):
+        for contrasena_intento in generar_contraseñas(longitud):
+            if detener_evento.is_set():
+                messagebox.showinfo("Detenido", "El ataque de fuerza bruta se ha detenido.")
+                return
+
+            contador += 1
+            if descifrar_zip(file_path, contrasena_intento):
+                encontrada = True
+                messagebox.showinfo("Resultado", f"Contraseña encontrada: {contrasena_intento}")
+                break
+            if time.time() - ultimo_reporte >= 60:  # Mostrar progreso cada 1 minuto (60 segundos)
+                progreso = f"Intentos: {contador}, Tiempo transcurrido: {time.time() - inicio:.2f} segundos"
+                print(progreso)
+                messagebox.showinfo("Progreso", progreso)
+                ultimo_reporte = time.time()
+        if encontrada:
+            break
+
+    fin = time.time()
+    resultado_final = f"Tiempo total: {fin - inicio:.2f} segundos\nTotal de combinaciones probadas: {contador}"
+    print(resultado_final)
+    messagebox.showinfo("Resultado Final", resultado_final)
+
+# Función para manejar el botón de cargar diccionario
+def cargar():
+    global diccionario
+    diccionario = cargar_diccionario()
+    if diccionario:
+        messagebox.showinfo("Diccionario Cargado", f"Se han cargado {len(diccionario)} contraseñas del diccionario.")
+
+# Función para manejar el botón de descifrar archivo ZIP
+def descifrar():
+    global detener_evento
+    detener_evento.clear()
+    file_path = filedialog.askopenfilename(title="Seleccionar archivo ZIP cifrado", filetypes=[("ZIP files", "*.zip")])
+    if file_path:
+        # Ejecutar el descifrado en un hilo separado
+        Thread(target=iniciar_ataque_zip, args=(file_path, diccionario)).start()
+
+# Función para manejar el evento de la tecla Esc
+def detener(event=None):
+    global detener_evento
+    detener_evento.set()
+    messagebox.showinfo("Detenido", "El ataque de fuerza bruta se ha detenido por el usuario.")
+    root.quit()  # Para detener el loop de la GUI también
+
+# Crear la ventana principal
+root = tk.Tk()
+root.title("Ataque de Fuerza Bruta para ZIP")
+
+# Crear y colocar los widgets
+label = tk.Label(root, text="Cargar diccionario y seleccionar archivo ZIP cifrado:")
+label.pack(pady=10)
+
+button_cargar = tk.Button(root, text="Cargar Diccionario", command=cargar, bg="green", fg="white")
+button_cargar.pack(pady=10)
+
+button_descifrar = tk.Button(root, text="Descifrar Archivo ZIP", command=descifrar, bg="blue", fg="white")
+button_descifrar.pack(pady=10)
+
+# Agregar el texto "powered by viaja tech" en la parte inferior
+footer = tk.Label(root, text="powered by viaja tech", font=("Arial", 10))
+footer.pack(side=tk.BOTTOM, pady=10)
+
+# Asignar la tecla Esc para detener el ataque
+root.bind('<Escape>', detener)
+
+# Iniciar el bucle principal de la GUI
+root.mainloop()
