@@ -9,7 +9,7 @@ Recuerda darme créditos si usas mi script. lo puedes hacer también en mis rede
 VERSIÓN KIVY
 -----------
 ![](https://github.com/viajatech/SimuladorFuerza/blob/main/Kivy%20Simulador.png)
-![](
+![](https://github.com/viajatech/SimuladorFuerza/blob/main/ZIP%20BRUTEFORCE.png)
 -----------
 VERSIÓN TKINTER
 -----------
