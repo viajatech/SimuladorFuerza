@@ -6,12 +6,6 @@
 #Simulador de ataques de fuerza bruta con múltiples combinaciones 
 
 
-
-
-
-
-
-
 import itertools
 import string
 import time
