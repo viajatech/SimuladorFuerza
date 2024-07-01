@@ -1,4 +1,4 @@
-SIMULADOR DE ATAQUES DE FUERZA BRUTA (VERSION TKINTER Y KIVY=
+SIMULADOR DE ATAQUES DE FUERZA BRUTA (VERSION TKINTER Y KIVY)
 --------
 Simulador de Ataques de Fuerza Bruta CPU + Ataques .zip con diccionario
 --------
