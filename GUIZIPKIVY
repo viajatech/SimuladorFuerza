@@ -1,0 +1,238 @@
+#Version Kivy .ZIP
+#Interfaz GUI color menta y fondo negro.
+
+#pip install kivy 
+#pip install plyer
+#pip install kivy plyer (ambos)
+ 
+#Versión mejorada. al presionar la tecla esc se para el script.
+#Por David Ruiz
+#Puedes usar mi script siempre y cuando me des créditos en mis redes sociales @viajatech
+#Simulador de ataques de fuerza bruta con múltiples combinaciones 
+
+
+
+
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.progressbar import ProgressBar
+from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.graphics import Color, Rectangle
+from kivy.uix.popup import Popup
+from kivy.lang import Builder
+from plyer import filechooser
+
+import itertools
+import string
+import time
+from threading import Thread, Event
+from zipfile import ZipFile, BadZipFile
+
+# Actualizar el archivo KV para mejorar la visibilidad
+Builder.load_string('''
+#:import utils kivy.utils
+
+<CyberpunkButton@Button>:
+    background_color: 0, 0, 0, 0
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex("#00FFFF") if self.state == 'normal' else utils.get_color_from_hex("#007777")
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [15,]
+    color: utils.get_color_from_hex("#000000")
+    font_size: '18sp'
+
+<CyberpunkLabel@Label>:
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex("#111111")
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    color: utils.get_color_from_hex("#00FFFF")
+    font_size: '16sp'
+
+<CyberpunkProgressBar@ProgressBar>:
+    canvas:
+        Color:
+            rgb: utils.get_color_from_hex("#00FFFF")
+        Rectangle:
+            pos: self.x, self.center_y - 5
+            size: self.width * self.value_normalized, 10
+
+<ZipBruteForceGUI>:
+    canvas.before:
+        Color:
+            rgba: utils.get_color_from_hex("#000000")
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    orientation: 'vertical'
+    padding: 20
+    spacing: 15
+
+    CyberpunkLabel:
+        text: 'ZIP Brute Force - Cyberpunk Edition'
+        font_size: '24sp'
+        size_hint_y: None
+        height: '50dp'
+
+    CyberpunkButton:
+        text: 'Cargar Diccionario'
+        size_hint_y: None
+        height: '50dp'
+        on_release: root.cargar_diccionario()
+
+    CyberpunkButton:
+        text: 'Seleccionar Archivo ZIP'
+        size_hint_y: None
+        height: '50dp'
+        on_release: root.seleccionar_zip()
+
+    CyberpunkButton:
+        text: 'Iniciar Ataque'
+        size_hint_y: None
+        height: '50dp'
+        on_release: root.iniciar_ataque()
+
+    CyberpunkProgressBar:
+        id: progress_bar
+        max: 100
+        value: 0
+        size_hint_y: None
+        height: '20dp'
+
+    CyberpunkLabel:
+        id: status_label
+        text: 'Esperando acción...'
+        size_hint_y: None
+        height: '30dp'
+
+    CyberpunkLabel:
+        text: 'powered by viaja tech'
+        size_hint_y: None
+        height: '30dp'
+''')
+
+
+class ZipBruteForceGUI(BoxLayout):
+    def __init__(self, **kwargs):
+        super(ZipBruteForceGUI, self).__init__(**kwargs)
+        self.diccionario = []
+        self.zip_path = ''
+        self.detener_evento = Event()
+
+    # El resto de los métodos permanecen iguales...
+
+
+class ZipBruteForceGUI(BoxLayout):
+    def __init__(self, **kwargs):
+        super(ZipBruteForceGUI, self).__init__(**kwargs)
+        self.diccionario = []
+        self.zip_path = ''
+        self.detener_evento = Event()
+
+    def cargar_diccionario(self):
+        try:
+            path = filechooser.open_file(title="Seleccionar archivo de diccionario",
+                                         filters=[("Archivo de texto", "*.txt")])
+            if path:
+                with open(path[0], 'r', encoding='utf-8', errors='ignore') as file:
+                    self.diccionario = file.read().splitlines()
+                self.ids.status_label.text = f'Diccionario cargado: {len(self.diccionario)} contraseñas'
+            else:
+                self.ids.status_label.text = 'No se seleccionó ningún archivo'
+        except Exception as e:
+            self.mostrar_popup('Error', f'Error al cargar el diccionario: {str(e)}')
+
+    def seleccionar_zip(self):
+        try:
+            path = filechooser.open_file(title="Seleccionar archivo ZIP",
+                                         filters=[("Archivo ZIP", "*.zip")])
+            if path:
+                self.zip_path = path[0]
+                self.ids.status_label.text = f'Archivo ZIP seleccionado: {self.zip_path}'
+            else:
+                self.ids.status_label.text = 'No se seleccionó ningún archivo ZIP'
+        except Exception as e:
+            self.mostrar_popup('Error', f'Error al seleccionar el archivo ZIP: {str(e)}')
+
+    def iniciar_ataque(self):
+        if not self.zip_path:
+            self.mostrar_popup('Error', 'Por favor, seleccione un archivo ZIP primero.')
+            return
+
+        self.detener_evento.clear()
+        Thread(target=self.realizar_ataque).start()
+
+    def realizar_ataque(self):
+        self.ids.status_label.text = 'Ataque iniciado...'
+        self.ids.progress_bar.value = 0
+
+        if self.diccionario:
+            for i, password in enumerate(self.diccionario):
+                if self.detener_evento.is_set():
+                    break
+                if self.probar_password(password):
+                    Clock.schedule_once(lambda dt: self.mostrar_popup('Éxito', f'Contraseña encontrada: {password}'))
+                    return
+                self.actualizar_progreso(i + 1, len(self.diccionario), "Diccionario")
+
+        if not self.detener_evento.is_set():
+            self.fuerza_bruta()
+
+    def fuerza_bruta(self):
+        caracteres = string.ascii_letters + string.digits + string.punctuation
+        max_longitud = 8
+        intentos = 0
+        total_estimado = sum(len(caracteres) ** i for i in range(1, max_longitud + 1))
+
+        for longitud in range(1, max_longitud + 1):
+            for combinacion in itertools.product(caracteres, repeat=longitud):
+                if self.detener_evento.is_set():
+                    return
+                password = ''.join(combinacion)
+                intentos += 1
+                if self.probar_password(password):
+                    Clock.schedule_once(lambda dt: self.mostrar_popup('Éxito', f'Contraseña encontrada: {password}'))
+                    return
+                if intentos % 1000 == 0:
+                    self.actualizar_progreso(intentos, total_estimado, "Fuerza Bruta")
+
+        Clock.schedule_once(lambda dt: self.mostrar_popup('Completado', 'Ataque de fuerza bruta completado sin éxito.'))
+
+    def probar_password(self, password):
+        try:
+            with ZipFile(self.zip_path) as zf:
+                zf.extractall(pwd=password.encode('utf-8'))
+            return True
+        except (RuntimeError, BadZipFile):
+            return False
+
+    def actualizar_progreso(self, intentos, total, modo):
+        def update(dt):
+            porcentaje = (intentos / total) * 100 if total > 0 else 0
+            self.ids.progress_bar.value = porcentaje
+            self.ids.status_label.text = f'{modo}: {intentos}/{total} ({porcentaje:.2f}%)'
+
+        Clock.schedule_once(update)
+
+    def mostrar_popup(self, titulo, mensaje):
+        popup = Popup(title=titulo, content=Label(text=mensaje), size_hint=(None, None), size=(400, 200))
+        popup.open()
+
+
+class ZipBruteForceApp(App):
+    def build(self):
+        return ZipBruteForceGUI()
+
+
+if __name__ == '__main__':
+    Window.clearcolor = (0, 0, 0, 1)  # Fondo negro
+    ZipBruteForceApp().run()
