@@ -1,4 +1,5 @@
 SIMULADOR DE ATAQUES DE FUERZA BRUTA
+--------
 Simulador de Ataques de Fuerza Bruta CPU + Ataques .zip con diccionario
 --------
 by David Ruiz
