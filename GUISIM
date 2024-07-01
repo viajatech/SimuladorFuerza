@@ -1,0 +1,146 @@
+#Versión mejorada. al presionar la tecla esc se para el script.
+#Por David Ruiz
+#Puedes usar mi script siempre y cuando me des créditos en mis redes sociales @viajatech
+#Simulador de ataques de fuerza bruta con múltiples combinaciones 
+
+
+
+
+import itertools
+import string
+import time
+import tkinter as tk
+from tkinter import messagebox, filedialog
+from threading import Thread, Event
+
+# Inicializar la variable diccionario
+diccionario = []
+
+# Variable global para detener el evento
+detener_evento = Event()
+
+# Función para simular la verificación de contraseña
+def verificar_contraseña(contrasena_intento, contrasena_real):
+    return contrasena_intento == contrasena_real
+
+# Generador de combinaciones de contraseñas
+def generar_contraseñas(longitud):
+    caracteres = string.ascii_letters + string.digits + string.punctuation
+    for contrasena in itertools.product(caracteres, repeat=longitud):
+        yield ''.join(contrasena)
+
+# Función para cargar el diccionario de contraseñas
+def cargar_diccionario():
+    file_path = filedialog.askopenfilename(title="Seleccionar archivo de diccionario", filetypes=[("Text files", "*.txt")])
+    if file_path:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            diccionario = file.read().splitlines()
+        return diccionario
+    return []
+
+# Función para iniciar el ataque de fuerza bruta
+def iniciar_ataque(contrasena_real, diccionario):
+    inicio = time.time()
+    ultimo_reporte = inicio
+
+    encontrada = False
+    longitud_maxima = 8  # Puedes ajustar la longitud máxima según sea necesario
+    contador = 0
+
+    # Informar al usuario que el programa ha comenzado
+    messagebox.showinfo("Progreso", "El ataque de fuerza bruta ha comenzado.")
+
+    # Intentar con el diccionario primero
+    for contrasena_intento in diccionario:
+        if detener_evento.is_set():
+            break
+        contador += 1
+        if verificar_contraseña(contrasena_intento, contrasena_real):
+            encontrada = True
+            messagebox.showinfo("Resultado", f"Contraseña encontrada: {contrasena_intento}")
+            break
+        if time.time() - ultimo_reporte >= 300:  # Mostrar progreso cada 5 minutos (300 segundos)
+            progreso = f"Intentos: {contador}, Tiempo transcurrido: {time.time() - inicio:.2f} segundos"
+            print(progreso)
+            messagebox.showinfo("Progreso", progreso)
+            ultimo_reporte = time.time()
+    if encontrada:
+        fin = time.time()
+        resultado_final = f"Tiempo total: {fin - inicio:.2f} segundos\nTotal de combinaciones generadas: {contador}"
+        print(resultado_final)
+        messagebox.showinfo("Resultado Final", resultado_final)
+        return
+
+    # Si no se encuentra en el diccionario, usar fuerza bruta
+    for longitud in range(1, longitud_maxima + 1):
+        for contrasena_intento in generar_contraseñas(longitud):
+            if detener_evento.is_set():
+                break
+            contador += 1
+            if verificar_contraseña(contrasena_intento, contrasena_real):
+                encontrada = True
+                messagebox.showinfo("Resultado", f"Contraseña encontrada: {contrasena_intento}")
+                break
+            if time.time() - ultimo_reporte >= 300:  # Mostrar progreso cada 5 minutos (300 segundos)
+                progreso = f"Intentos: {contador}, Tiempo transcurrido: {time.time() - inicio:.2f} segundos"
+                print(progreso)
+                messagebox.showinfo("Progreso", progreso)
+                ultimo_reporte = time.time()
+        if encontrada:
+            break
+
+    fin = time.time()
+    resultado_final = f"Tiempo total: {fin - inicio:.2f} segundos\nTotal de combinaciones generadas: {contador}"
+    print(resultado_final)
+    messagebox.showinfo("Resultado Final", resultado_final)
+
+# Función para manejar el botón de inicio
+def iniciar():
+    contrasena_real = entry.get()
+    if contrasena_real:
+        # Reiniciar el evento de detener
+        detener_evento.clear()
+        # Ejecutar el ataque en un hilo separado
+        Thread(target=iniciar_ataque, args=(contrasena_real, diccionario)).start()
+    else:
+        messagebox.showwarning("Advertencia", "Por favor, ingresa una contraseña.")
+
+# Función para manejar el botón de cargar diccionario
+def cargar():
+    global diccionario
+    diccionario = cargar_diccionario()
+    if diccionario:
+        messagebox.showinfo("Diccionario Cargado", f"Se han cargado {len(diccionario)} contraseñas del diccionario.")
+
+# Función para manejar el evento de la tecla Esc
+def detener(event=None):
+    detener_evento.set()
+    messagebox.showinfo("Detenido", "El ataque de fuerza bruta se ha detenido por el usuario.")
+    root.quit()  # Para detener el loop de la GUI también
+
+# Crear la ventana principal
+root = tk.Tk()
+root.title("Ataque de Fuerza Bruta con CPU")
+
+# Crear y colocar los widgets
+label = tk.Label(root, text="Ingresa la contraseña a descifrar:")
+label.pack(pady=10)
+
+entry = tk.Entry(root)
+entry.pack(pady=5)
+
+button_iniciar = tk.Button(root, text="Iniciar Ataque", command=iniciar, bg="red", fg="white")
+button_iniciar.pack(pady=10)
+
+button_cargar = tk.Button(root, text="Cargar Diccionario", command=cargar, bg="green", fg="white")
+button_cargar.pack(pady=10)
+
+# Agregar el texto "powered by viaja tech" en la parte inferior
+footer = tk.Label(root, text="powered by viaja tech", font=("Arial", 10))
+footer.pack(side=tk.BOTTOM, pady=10)
+
+# Asignar la tecla Esc para detener el ataque
+root.bind('<Escape>', detener)
+
+# Iniciar el bucle principal de la GUI
+root.mainloop()
