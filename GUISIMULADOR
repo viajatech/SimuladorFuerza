@@ -1,5 +1,6 @@
 #Por David Ruiz
 #Puedes usar mi script siempre y cuando me des créditos en mis redes sociales @viajatech
+#Simulador de ataques de fuerza bruta con múltiples combinaciones 
 
 
 import itertools
